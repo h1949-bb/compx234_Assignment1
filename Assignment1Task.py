@@ -23,10 +23,17 @@ class Assignment1:
     def startSimulation(self):
         # Create Machine and Printer threads
         # Write code here
-            
         # Start all the threads
         # Write code here
-
+        for machine_id in range(self.NUM_MACHINES):
+            m_thread=self.machineThread(machine_id,self)
+            self.mThreads.append(m_thread)
+            m_thread.start()
+        for printer_id in range(self.NUM_PRINTERS):
+            p_thread=self.printerThread(printer_id,self)
+            self.pThreads.append(p_thread) 
+            p_thread.start()
+            
         # Let the simulation run for some time
         time.sleep(self.SIMULATION_TIME)
 
@@ -35,6 +42,11 @@ class Assignment1:
 
         # Wait until all printer threads finish by joining them
         # Write code here
+        for m_thread in self.mThreads:
+                    m_thread.join()
+        for p_thread in self.pThreads:
+                    p_thread.join()
+        print("所有线程已经退出，模拟结束")
 
     # Printer class
     class printerThread(threading.Thread):
@@ -49,6 +61,13 @@ class Assignment1:
                 self.printerSleep()
                 # Grab the request at the head of the queue and print it
                 # Write code here
+                self.printDox(self.printerID)
+            print(f"打印机{self.printerID}:模拟结束，处理其他..")
+            while True:
+                    doc=self.outer.print_list.queuePrint(self.printerID)
+                    if not doc:
+                        break
+                    self.printerSleep()
 
         def printerSleep(self):
             sleepSeconds = random.randint(1, self.outer.MAX_PRINTER_SLEEP)
@@ -72,6 +91,7 @@ class Assignment1:
                 self.machineSleep()
                 # Machine wakes up and sends a print request
                 # Write code here
+                self.printRequest(self.machineID)
 
         def machineSleep(self):
             sleepSeconds = random.randint(1, self.outer.MAX_MACHINE_SLEEP)
@@ -83,3 +103,4 @@ class Assignment1:
             doc = printDoc(f"My name is machine {id}", id)
             # Insert it in the print queue
             self.outer.print_list.queueInsert(doc)
+    
