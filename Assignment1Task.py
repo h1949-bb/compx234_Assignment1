@@ -12,6 +12,7 @@ class Assignment1:
     SIMULATION_TIME = 30     # Total simulation time in seconds
     MAX_PRINTER_SLEEP = 3    # Maximum sleep time for printers
     MAX_MACHINE_SLEEP = 5    # Maximum sleep time for machines
+    QUEUE_MAX_SIZE = 5       # Maximum length
 
     # Initialise simulation variables
     def __init__(self):
@@ -19,7 +20,8 @@ class Assignment1:
         self.print_list = printList()  # Create an empty list of print requests
         self.mThreads = []             # list for machine threads
         self.pThreads = []             # list for printer threads
-
+        self.empty = threading.Semaphore(self.QUEUE_MAX_SIZE) 
+        self.mutex = threading.Lock()     
     def startSimulation(self):
         # Create Machine and Printer threads
         # Write code here
@@ -62,21 +64,23 @@ class Assignment1:
                 # Grab the request at the head of the queue and print it
                 # Write code here
                 self.printDox(self.printerID)
+                self.outer.empty.release()
             print(f"打印机{self.printerID}:模拟结束，处理其他..")
             while True:
                     doc=self.outer.print_list.queuePrint(self.printerID)
                     if not doc:
                         break
                     self.printerSleep()
+                    self.outer.empty.release()
 
         def printerSleep(self):
             sleepSeconds = random.randint(1, self.outer.MAX_PRINTER_SLEEP)
             time.sleep(sleepSeconds)
 
         def printDox(self, printerID):
-            print(f"Printer ID: {printerID} : now available")
+           print(f"Printer ID: {printerID} : now available")
             # Print from the queue
-            self.outer.print_list.queuePrint(printerID)
+           self.outer.print_list.queuePrint(printerID)
 
     # Machine class
     class machineThread(threading.Thread):
@@ -92,15 +96,20 @@ class Assignment1:
                 # Machine wakes up and sends a print request
                 # Write code here
                 self.printRequest(self.machineID)
+                #creat the document and insert it to the list
+                doc=printDoc(f"my name is machine{self.machineID}",self.machineID)
+                self.outer.print_list.queueInsert(doc)
 
         def machineSleep(self):
             sleepSeconds = random.randint(1, self.outer.MAX_MACHINE_SLEEP)
             time.sleep(sleepSeconds)
 
         def printRequest(self, id):
-            print(f"Machine {id} Sent a print request")
-            # Build a print document
-            doc = printDoc(f"My name is machine {id}", id)
-            # Insert it in the print queue
-            self.outer.print_list.queueInsert(doc)
+           print(f"Machine {id} Sent a print request")
+          # Build a print document
+           doc = printDoc(f"My name is machine {id}", id)
+           self.outer.empty.acquire()
+            # 2. 加锁保证安全
+           with self.outer.mutex:
+                self.outer.print_list.queueInsert(doc)
     
